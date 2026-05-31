@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>가위바위보 - 전국 랭킹</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --card: #13131a;
+      --border: #2a2a3a;
+      --accent: #7c3aed;
+      --accent2: #06b6d4;
+      --win: #10b981;
+      --lose: #ef4444;
+      --draw: #f59e0b;
+      --text: #f0f0ff;
+      --muted: #6b7280;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(6,182,212,0.06) 0%, transparent 50%);
+      pointer-events: none; z-index: 0;
+    }
+    .container { position: relative; z-index: 1; width: 100%; max-width: 580px; padding-top: 20px; }
+    h1 {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: clamp(2rem, 8vw, 3rem);
+      text-align: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 6px;
+    }
+    .subtitle { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 20px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* 탭 */
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .tab-btn {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px; color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { border-color: var(--accent); color: var(--text); background: rgba(124,58,237,0.15); }
+
+    /* 닉네임 입력 */
+    .nickname-area {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 20px; margin-bottom: 16px; display: flex; gap: 10px; align-items: center;
+    }
+    .nickname-area input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+    }
+    .nickname-area input:focus { border-color: var(--accent); }
+    .nickname-area input::placeholder { color: var(--muted); }
+    .nickname-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 10px; padding: 10px 18px;
+      color: white; font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: opacity 0.2s;
+    }
+    .nickname-btn:hover { opacity: 0.85; }
+    .current-nickname { font-size: 0.8rem; color: var(--accent2); margin-top: 8px; text-align: center; }
+
+    /* 점수판 */
+    .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin-bottom: 16px; align-items: center; }
+    .score-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px 10px; text-align: center; }
+    .score-box .label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+    .score-box .score { font-family: 'Black Han Sans', sans-serif; font-size: 2.2rem; line-height: 1; }
+    .score-box.player .score { color: var(--accent2); }
+    .score-box.computer .score { color: var(--accent); }
+    .vs { font-family: 'Black Han Sans', sans-serif; font-size: 1.1rem; color: var(--muted); text-align: center; }
+
+    /* 대결 화면 */
+    .battle-area {
+      background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+      padding: 20px; margin-bottom: 14px; display: grid;
+      grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; min-height: 130px;
+    }
+    .fighter { text-align: center; }
+    .fighter .name { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .fighter .emoji { font-size: 3.2rem; display: block; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+    .fighter .choice-name { font-size: 0.78rem; color: var(--muted); margin-top: 6px; height: 16px; }
+    .battle-divider { font-family: 'Black Han Sans', sans-serif; font-size: 1rem; color: var(--border); }
+
+    /* 결과 */
+    .result-badge { text-align: center; height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .result-text { font-family: 'Black Han Sans', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; opacity: 0; transform: translateY(8px); transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .result-text.show { opacity: 1; transform: translateY(0); }
+    .result-text.win { color: var(--win); }
+    .result-text.lose { color: var(--lose); }
+    .result-text.draw { color: var(--draw); }
+
+    /* 선택 버튼 */
+    .choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    .choice-btn {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px 8px; cursor: pointer; transition: all 0.2s;
+      display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .choice-btn:hover { border-color: var(--accent); background: rgba(124,58,237,0.1); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(124,58,237,0.2); }
+    .choice-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .choice-btn .btn-emoji { font-size: 2rem; }
+    .choice-btn .btn-label { font-size: 0.78rem; color: var(--muted); }
+    .reset-btn { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 10px; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
+    .reset-btn:hover { border-color: var(--lose); color: var(--lose); }
+
+    /* 랭킹 */
+    .ranking-area { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+    .ranking-title { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .refresh-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--muted); font-size: 0.72rem; cursor: pointer; transition: all 0.2s; }
+    .refresh-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+    .ranking-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+    .ranking-list::-webkit-scrollbar { width: 3px; }
+    .ranking-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .ranking-item {
+      display: grid; grid-template-columns: 28px 1fr auto auto auto;
+      align-items: center; gap: 10px; padding: 8px 12px;
+      background: rgba(255,255,255,0.03); border-radius: 10px;
+      font-size: 0.82rem; animation: slideIn 0.3s ease;
+    }
+    .ranking-item.me { border: 1px solid rgba(124,58,237,0.4); background: rgba(124,58,237,0.08); }
+    .rank-num { font-family: 'Black Han Sans', sans-serif; color: var(--muted); text-align: center; }
+    .rank-num.gold { color: #fbbf24; }
+    .rank-num.silver { color: #9ca3af; }
+    .rank-num.bronze { color: #b45309; }
+    .rank-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rank-stat { color: var(--muted); font-size: 0.72rem; text-align: center; }
+    .rank-rate { font-family: 'Black Han Sans', sans-serif; color: var(--win); font-size: 0.9rem; }
+    .no-data { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 20px 0; }
+    .loading { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 20px 0; }
+
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+    .shake { animation: shake 0.4s ease; }
+    .bounce { animation: bounce 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+
+    /* 히스토리 */
+    .history { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .history-title { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+    .history-list { display: flex; flex-direction: column; gap: 5px; max-height: 130px; overflow-y: auto; }
+    .history-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; padding: 5px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+    .h-result.win { color: var(--win); font-weight: 700; }
+    .h-result.lose { color: var(--lose); font-weight: 700; }
+    .h-result.draw { color: var(--draw); font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>가위바위보</h1>
+  <p class="subtitle">전국 랭킹 도전!</p>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('game')">🎮 게임</button>
+    <button class="tab-btn" onclick="showTab('ranking')">🏆 전국랭킹</button>
+  </div>
+
+  <!-- 게임 탭 -->
+  <div id="gameTab">
+    <!-- 닉네임 -->
+    <div class="nickname-area">
+      <input type="text" id="nicknameInput" placeholder="닉네임 입력 (최대 10자)" maxlength="10">
+      <button class="nickname-btn" onclick="setNickname()">설정</button>
+    </div>
+    <div class="current-nickname" id="currentNickname">닉네임을 설정하면 랭킹에 등록됩니다</div>
+
+    <!-- 점수판 -->
+    <div class="scoreboard" style="margin-top:14px;">
+      <div class="score-box player">
+        <div class="label">나</div>
+        <div class="score" id="playerScore">0</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="score-box computer">
+        <div class="label">AI</div>
+        <div class="score" id="computerScore">0</div>
+      </div>
+    </div>
+
+    <!-- 대결 화면 -->
+    <div class="battle-area">
+      <div class="fighter player">
+        <div class="name">나의 선택</div>
+        <span class="emoji" id="playerEmoji">🤔</span>
+        <div class="choice-name" id="playerChoiceName"></div>
+      </div>
+      <div class="battle-divider">⚡</div>
+      <div class="fighter computer">
+        <div class="name">AI 선택</div>
+        <span class="emoji" id="computerEmoji">🤖</span>
+        <div class="choice-name" id="computerChoiceName"></div>
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="result-badge">
+      <div class="result-text" id="resultText"></div>
+    </div>
+
+    <!-- 선택 버튼 -->
+    <div class="choices">
+      <button class="choice-btn" onclick="play('가위')"><span class="btn-emoji">✌️</span><span class="btn-label">가위</span></button>
+      <button class="choice-btn" onclick="play('바위')"><span class="btn-emoji">✊</span><span class="btn-label">바위</span></button>
+      <button class="choice-btn" onclick="play('보')"><span class="btn-emoji">🖐️</span><span class="btn-label">보</span></button>
+    </div>
+    <button class="reset-btn" onclick="resetGame()">🔄 점수 초기화</button>
+
+    <!-- 히스토리 -->
+    <div class="history">
+      <div class="history-title">📋 게임 기록</div>
+      <div class="history-list" id="historyList"><div class="no-data">아직 게임 기록이 없습니다</div></div>
+    </div>
+  </div>
+
+  <!-- 랭킹 탭 -->
+  <div id="rankingTab" style="display:none;">
+    <div class="ranking-area">
+      <div class="ranking-title">
+        <span>🏆 전국 랭킹 TOP 20</span>
+        <button class="refresh-btn" onclick="loadRanking()">새로고침</button>
+      </div>
+      <div class="ranking-list" id="rankingList"><div class="loading">랭킹 불러오는 중...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://ugxvpkbaulhadlsgpqpc.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVneHZwa2JhdWxoYWRsc2dwcXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNjEwMDAsImV4cCI6MjA5NTczNzAwMH0.M1qbNQiBxvfFLubukXP9Ggvi_Cod0PuEorZY64XwKFU';
+
+  const choices = [
+    { name: '가위', emoji: '✌️' },
+    { name: '바위', emoji: '✊' },
+    { name: '보',   emoji: '🖐️' }
+  ];
+
+  let playerScore = 0, computerScore = 0, draws = 0;
+  let history = [], isPlaying = false;
+  let nickname = localStorage.getItem('rps_nickname') || '';
+
+  if (nickname) {
+    document.getElementById('currentNickname').textContent = `현재 닉네임: ${nickname}`;
+    document.getElementById('nicknameInput').value = nickname;
+  }
+
+  function showTab(tab) {
+    document.getElementById('gameTab').style.display = tab === 'game' ? 'block' : 'none';
+    document.getElementById('rankingTab').style.display = tab === 'ranking' ? 'block' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'game')));
+    if (tab === 'ranking') loadRanking();
+  }
+
+  function setNickname() {
+    const val = document.getElementById('nicknameInput').value.trim();
+    if (!val) { alert('닉네임을 입력해주세요!'); return; }
+    nickname = val;
+    localStorage.setItem('rps_nickname', nickname);
+    document.getElementById('currentNickname').textContent = `현재 닉네임: ${nickname}`;
+    alert(`닉네임 "${nickname}" 설정 완료!`);
+  }
+
+  function getResult(player, computer) {
+    if (player === computer) return 'draw';
+    if ((player==='가위'&&computer==='보')||(player==='바위'&&computer==='가위')||(player==='보'&&computer==='바위')) return 'win';
+    return 'lose';
+  }
+
+  function play(playerChoice) {
+    if (isPlaying) return;
+    isPlaying = true;
+    const btns = document.querySelectorAll('.choice-btn');
+    btns.forEach(b => b.disabled = true);
+
+    const computerChoice = choices[Math.floor(Math.random() * 3)];
+    const playerData = choices.find(c => c.name === playerChoice);
+
+    document.getElementById('playerEmoji').textContent = playerData.emoji;
+    document.getElementById('playerChoiceName').textContent = playerChoice;
+    document.getElementById('computerEmoji').textContent = '🤔';
+    document.getElementById('computerChoiceName').textContent = '';
+
+    const resultEl = document.getElementById('resultText');
+    resultEl.classList.remove('show');
+
+    let dots = 0;
+    const thinking = setInterval(() => {
+      dots = (dots + 1) % 4;
+      document.getElementById('computerEmoji').textContent = ['🤔','😤','🧐','😈'][dots];
+    }, 200);
+
+    setTimeout(() => {
+      clearInterval(thinking);
+      document.getElementById('computerEmoji').textContent = computerChoice.emoji;
+      document.getElementById('computerChoiceName').textContent = computerChoice.name;
+
+      const result = getResult(playerChoice, computerChoice.name);
+      const pEmoji = document.getElementById('playerEmoji');
+      const cEmoji = document.getElementById('computerEmoji');
+
+      if (result === 'win') {
+        playerScore++;
+        document.getElementById('playerScore').textContent = playerScore;
+        pEmoji.classList.add('bounce'); cEmoji.classList.add('shake');
+        resultEl.textContent = '🎉 이겼습니다!'; resultEl.className = 'result-text win';
+      } else if (result === 'lose') {
+        computerScore++;
+        document.getElementById('computerScore').textContent = computerScore;
+        cEmoji.classList.add('bounce'); pEmoji.classList.add('shake');
+        resultEl.textContent = '😭 졌습니다...'; resultEl.className = 'result-text lose';
+      } else {
+        draws++;
+        resultEl.textContent = '🤝 비겼습니다!'; resultEl.className = 'result-text draw';
+      }
+
+      setTimeout(() => resultEl.classList.add('show'), 50);
+      setTimeout(() => { pEmoji.classList.remove('bounce','shake'); cEmoji.classList.remove('bounce','shake'); }, 500);
+
+      addHistory(playerChoice, computerChoice.name, result);
+      if (nickname) saveRanking();
+
+      btns.forEach(b => b.disabled = false);
+      isPlaying = false;
+    }, 800);
+  }
+
+  function addHistory(player, computer, result) {
+    const labels = { win: '승리', lose: '패배', draw: '무승부' };
+    history.unshift({ player, computer, result });
+    if (history.length > 20) history.pop();
+    const list = document.getElementById('historyList');
+    list.innerHTML = history.map(h => `
+      <div class="history-item">
+        <span style="color:var(--muted)">${h.player} vs ${h.computer}</span>
+        <span class="h-result ${h.result}">${labels[h.result]}</span>
+      </div>`).join('');
+  }
+
+  async function saveRanking() {
+    if (!nickname) return;
+    const total = playerScore + computerScore + draws;
+    const winRate = total > 0 ? Math.round((playerScore / total) * 100) : 0;
+
+    try {
+      const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/rankings?nickname=eq.${encodeURIComponent(nickname)}`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      const existing = await checkRes.json();
+
+      if (existing.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/rankings?nickname=eq.${encodeURIComponent(nickname)}`, {
+          method: 'PATCH',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wins: playerScore, losses: computerScore, draws, total, win_rate: winRate, updated_at: new Date().toISOString() })
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/rankings`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname, wins: playerScore, losses: computerScore, draws, total, win_rate: winRate })
+        });
+      }
+    } catch(e) { console.error('랭킹 저장 오류:', e); }
+  }
+
+  async function loadRanking() {
+    const list = document.getElementById('rankingList');
+    list.innerHTML = '<div class="loading">랭킹 불러오는 중...</div>';
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rankings?order=win_rate.desc,wins.desc&limit=20`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="no-data">아직 랭킹 데이터가 없습니다</div>'; return; }
+      const rankColors = ['gold', 'silver', 'bronze'];
+      const rankEmojis = ['🥇', '🥈', '🥉'];
+      list.innerHTML = data.map((r, i) => `
+        <div class="ranking-item ${r.nickname === nickname ? 'me' : ''}">
+          <div class="rank-num ${rankColors[i] || ''}">${i < 3 ? rankEmojis[i] : i + 1}</div>
+          <div class="rank-name">${r.nickname}${r.nickname === nickname ? ' 👈' : ''}</div>
+          <div class="rank-stat">${r.wins}승</div>
+          <div class="rank-stat">${r.losses}패</div>
+          <div class="rank-rate">${r.win_rate}%</div>
+        </div>`).join('');
+    } catch(e) { list.innerHTML = '<div class="no-data">랭킹 불러오기 실패</div>'; }
+  }
+
+  function resetGame() {
+    if (!confirm('점수를 초기화할까요?')) return;
+    playerScore = 0; computerScore = 0; draws = 0; history = [];
+    document.getElementById('playerScore').textContent = '0';
+    document.getElementById('computerScore').textContent = '0';
+    document.getElementById('playerEmoji').textContent = '🤔';
+    document.getElementById('computerEmoji').textContent = '🤖';
+    document.getElementById('playerChoiceName').textContent = '';
+    document.getElementById('computerChoiceName').textContent = '';
+    document.getElementById('resultText').classList.remove('show');
+    document.getElementById('historyList').innerHTML = '<div class="no-data">아직 게임 기록이 없습니다</div>';
+  }
+</script>
+</body>
+</html>
