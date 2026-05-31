@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>가위바위보</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --card: #13131a;
+      --border: #2a2a3a;
+      --accent: #7c3aed;
+      --accent2: #06b6d4;
+      --win: #10b981;
+      --lose: #ef4444;
+      --draw: #f59e0b;
+      --text: #f0f0ff;
+      --muted: #6b7280;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(6,182,212,0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    h1 {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: clamp(2rem, 8vw, 3.2rem);
+      text-align: center;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 28px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* 점수판 */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+
+    .score-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+
+    .score-box .label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+
+    .score-box .score {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 2.4rem;
+      line-height: 1;
+    }
+
+    .score-box.player .score { color: var(--accent2); }
+    .score-box.computer .score { color: var(--accent); }
+
+    .vs {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 1.2rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* 대결 화면 */
+    .battle-area {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+      min-height: 140px;
+    }
+
+    .fighter {
+      text-align: center;
+    }
+
+    .fighter .name {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .fighter .emoji {
+      font-size: 3.6rem;
+      display: block;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      filter: drop-shadow(0 0 12px rgba(124,58,237,0.3));
+    }
+
+    .fighter.player .emoji { filter: drop-shadow(0 0 12px rgba(6,182,212,0.4)); }
+
+    .fighter .choice-name {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+      height: 18px;
+    }
+
+    .battle-divider {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 1rem;
+      color: var(--border);
+    }
+
+    /* 결과 */
+    .result-badge {
+      text-align: center;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .result-text {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: 0.05em;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .result-text.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .result-text.win  { color: var(--win); }
+    .result-text.lose { color: var(--lose); }
+    .result-text.draw { color: var(--draw); }
+
+    /* 선택 버튼 */
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .choice-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    .choice-btn:hover {
+      border-color: var(--accent);
+      background: rgba(124,58,237,0.1);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(124,58,237,0.2);
+    }
+
+    .choice-btn:active { transform: translateY(0); }
+
+    .choice-btn .btn-emoji { font-size: 2.2rem; }
+    .choice-btn .btn-label { font-size: 0.8rem; color: var(--muted); }
+
+    .choice-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 리셋 버튼 */
+    .reset-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.05em;
+    }
+
+    .reset-btn:hover {
+      border-color: var(--lose);
+      color: var(--lose);
+      background: rgba(239,68,68,0.05);
+    }
+
+    /* 히스토리 */
+    .history {
+      margin-top: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .history-title {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .history-list::-webkit-scrollbar { width: 3px; }
+    .history-list::-webkit-scrollbar-track { background: transparent; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .history-item .h-moves { color: var(--muted); }
+    .history-item .h-result { font-weight: 700; }
+    .history-item .h-result.win  { color: var(--win); }
+    .history-item .h-result.lose { color: var(--lose); }
+    .history-item .h-result.draw { color: var(--draw); }
+
+    .no-history {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      padding: 12px 0;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+
+    .shake { animation: shake 0.4s ease; }
+
+    @keyframes bounce {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.25); }
+    }
+
+    .bounce { animation: bounce 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>가위바위보</h1>
+  <p class="subtitle">AI 와 대결하세요</p>
+
+  <!-- 점수판 -->
+  <div class="scoreboard">
+    <div class="score-box player">
+      <div class="label">나</div>
+      <div class="score" id="playerScore">0</div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="score-box computer">
+      <div class="label">AI</div>
+      <div class="score" id="computerScore">0</div>
+    </div>
+  </div>
+
+  <!-- 대결 화면 -->
+  <div class="battle-area">
+    <div class="fighter player">
+      <div class="name">나의 선택</div>
+      <span class="emoji" id="playerEmoji">🤔</span>
+      <div class="choice-name" id="playerChoiceName"></div>
+    </div>
+    <div class="battle-divider">⚡</div>
+    <div class="fighter computer">
+      <div class="name">AI 선택</div>
+      <span class="emoji" id="computerEmoji">🤖</span>
+      <div class="choice-name" id="computerChoiceName"></div>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-badge">
+    <div class="result-text" id="resultText"></div>
+  </div>
+
+  <!-- 선택 버튼 -->
+  <div class="choices">
+    <button class="choice-btn" onclick="play('가위')">
+      <span class="btn-emoji">✌️</span>
+      <span class="btn-label">가위</span>
+    </button>
+    <button class="choice-btn" onclick="play('바위')">
+      <span class="btn-emoji">✊</span>
+      <span class="btn-label">바위</span>
+    </button>
+    <button class="choice-btn" onclick="play('보')">
+      <span class="btn-emoji">🖐️</span>
+      <span class="btn-label">보</span>
+    </button>
+  </div>
+
+  <!-- 리셋 -->
+  <button class="reset-btn" onclick="resetGame()">🔄 점수 초기화</button>
+
+  <!-- 히스토리 -->
+  <div class="history">
+    <div class="history-title">📋 게임 기록</div>
+    <div class="history-list" id="historyList">
+      <div class="no-history">아직 게임 기록이 없습니다</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const choices = [
+    { name: '가위', emoji: '✌️' },
+    { name: '바위', emoji: '✊' },
+    { name: '보',   emoji: '🖐️' }
+  ];
+
+  let playerScore = 0;
+  let computerScore = 0;
+  let history = [];
+  let isPlaying = false;
+
+  function getResult(player, computer) {
+    if (player === computer) return 'draw';
+    if (
+      (player === '가위' && computer === '보') ||
+      (player === '바위' && computer === '가위') ||
+      (player === '보'   && computer === '바위')
+    ) return 'win';
+    return 'lose';
+  }
+
+  function play(playerChoice) {
+    if (isPlaying) return;
+    isPlaying = true;
+
+    const btns = document.querySelectorAll('.choice-btn');
+    btns.forEach(b => b.disabled = true);
+
+    const computerChoice = choices[Math.floor(Math.random() * 3)];
+    const playerData = choices.find(c => c.name === playerChoice);
+
+    // 선택 표시
+    document.getElementById('playerEmoji').textContent = playerData.emoji;
+    document.getElementById('playerChoiceName').textContent = playerChoice;
+    document.getElementById('computerEmoji').textContent = '🤔';
+    document.getElementById('computerChoiceName').textContent = '';
+
+    // 결과 숨기기
+    const resultEl = document.getElementById('resultText');
+    resultEl.classList.remove('show');
+
+    // AI 생각하는 척
+    let dots = 0;
+    const thinking = setInterval(() => {
+      dots = (dots + 1) % 4;
+      document.getElementById('computerEmoji').textContent = ['🤔','😤','🧐','😈'][dots];
+    }, 200);
+
+    setTimeout(() => {
+      clearInterval(thinking);
+
+      document.getElementById('computerEmoji').textContent = computerChoice.emoji;
+      document.getElementById('computerChoiceName').textContent = computerChoice.name;
+
+      const result = getResult(playerChoice, computerChoice.name);
+
+      // 애니메이션
+      const pEmoji = document.getElementById('playerEmoji');
+      const cEmoji = document.getElementById('computerEmoji');
+
+      if (result === 'win') {
+        playerScore++;
+        document.getElementById('playerScore').textContent = playerScore;
+        pEmoji.classList.add('bounce');
+        cEmoji.classList.add('shake');
+        resultEl.textContent = '🎉 이겼습니다!';
+        resultEl.className = 'result-text win';
+      } else if (result === 'lose') {
+        computerScore++;
+        document.getElementById('computerScore').textContent = computerScore;
+        cEmoji.classList.add('bounce');
+        pEmoji.classList.add('shake');
+        resultEl.textContent = '😭 졌습니다...';
+        resultEl.className = 'result-text lose';
+      } else {
+        resultEl.textContent = '🤝 비겼습니다!';
+        resultEl.className = 'result-text draw';
+      }
+
+      setTimeout(() => resultEl.classList.add('show'), 50);
+
+      setTimeout(() => {
+        pEmoji.classList.remove('bounce','shake');
+        cEmoji.classList.remove('bounce','shake');
+      }, 500);
+
+      // 히스토리 추가
+      addHistory(playerChoice, computerChoice.name, result);
+
+      btns.forEach(b => b.disabled = false);
+      isPlaying = false;
+    }, 800);
+  }
+
+  function addHistory(player, computer, result) {
+    const labels = { win: '승리', lose: '패배', draw: '무승부' };
+    history.unshift({ player, computer, result });
+    if (history.length > 20) history.pop();
+
+    const list = document.getElementById('historyList');
+    list.innerHTML = history.map(h => `
+      <div class="history-item">
+        <span class="h-moves">${h.player} vs ${h.computer}</span>
+        <span class="h-result ${h.result}">${labels[h.result]}</span>
+      </div>
+    `).join('');
+  }
+
+  function resetGame() {
+    if (!confirm('점수를 초기화할까요?')) return;
+    playerScore = 0;
+    computerScore = 0;
+    history = [];
+    document.getElementById('playerScore').textContent = '0';
+    document.getElementById('computerScore').textContent = '0';
+    document.getElementById('playerEmoji').textContent = '🤔';
+    document.getElementById('computerEmoji').textContent = '🤖';
+    document.getElementById('playerChoiceName').textContent = '';
+    document.getElementById('computerChoiceName').textContent = '';
+    document.getElementById('resultText').classList.remove('show');
+    document.getElementById('historyList').innerHTML = '<div class="no-history">아직 게임 기록이 없습니다</div>';
+  }
+</script>
+</body>
+</html>
